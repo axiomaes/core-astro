@@ -1,0 +1,39 @@
+---
+import { requireAuth } from "../lib/requireAuth";
+
+if (process.env.NODE_ENV === "production") {
+    return new Response(null, { status: 404 });
+}
+
+const session = await requireAuth(Astro);
+
+if (!session) {
+    return Astro.redirect("/login");
+}
+
+const entityKeys = session.acl
+    ? Object.keys(session.acl).filter((k) => typeof session.acl[k] === "object")
+    : [];
+---
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>ACL Debug</title>
+    </head>
+    <body>
+        <h1>ACL Debug</h1>
+        <pre>
+User: {session.user.userName}
+Is Admin: {String(session.user.isAdmin)}
+ACL Fetched At: {session.aclFetchedAt}
+Entity Permission Keys: {JSON.stringify(entityKeys, null, 2)}
+		</pre>
+
+        <h3>Full ACL Object (JSON)</h3>
+        <pre>{JSON.stringify(session.acl, null, 2)}</pre>
+
+        <hr />
+        <a href="/dashboard">Back to Dashboard</a>
+    </body>
+</html>

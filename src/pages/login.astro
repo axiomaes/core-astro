@@ -1,0 +1,56 @@
+---
+
+---
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+        <title>Login</title>
+    </head>
+    <body>
+        <h1>Login</h1>
+        <form id="loginForm">
+            <div>
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" required />
+            </div>
+            <div>
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" required />
+            </div>
+            <button type="submit">Login</button>
+        </form>
+        <p id="error" style="color: red;"></p>
+
+        <script>
+            const form = document.getElementById(
+                "loginForm",
+            ) as HTMLFormElement;
+            const error = document.getElementById("error");
+
+            form?.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                error!.textContent = "";
+
+                const formData = new FormData(form);
+                const username = formData.get("username");
+                const password = formData.get("password");
+
+                const res = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                if (res.ok) {
+                    window.location.href = "/dashboard";
+                } else {
+                    error!.textContent = "Invalid credentials";
+                }
+            });
+        </script>
+    </body>
+</html>

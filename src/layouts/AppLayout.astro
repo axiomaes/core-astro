@@ -1,0 +1,180 @@
+---
+import {
+    LayoutDashboard,
+    Users,
+    BookOpen,
+    Package,
+    UserCheck,
+    MapPin,
+    Calendar,
+    AlertCircle,
+    LogOut,
+} from "lucide-astro";
+import { canEntity } from "../lib/permissions";
+import type { SessionData } from "../lib/session";
+import "../styles/global.css";
+
+interface Props {
+    session: SessionData;
+    title?: string;
+}
+
+const { session, title = "Axioma Core" } = Astro.props;
+
+const navItems = [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Clientes", href: "/contacts", icon: Users, entity: "Contact" },
+    { label: "Reservas", href: "/bookings", icon: BookOpen, entity: "Booking" },
+    {
+        label: "Paquetes",
+        href: "/travel-packages",
+        icon: Package,
+        entity: "TravelPackage",
+    },
+    {
+        label: "Guías",
+        href: "/tour-guides",
+        icon: UserCheck,
+        entity: "TourGuide",
+    },
+    {
+        label: "Destinos",
+        href: "/tourist-sites",
+        icon: MapPin,
+        entity: "TouristSite",
+    },
+    { label: "Agenda", href: "/calendar", icon: Calendar, entity: "Calendar" },
+    { label: "Incidencias", href: "/cases", icon: AlertCircle, entity: "Case" },
+];
+
+const visibleNavItems = navItems.filter((item) => {
+    if (!item.entity) return true;
+    return canEntity(session, item.entity, "read");
+});
+---
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+        <title>{title}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            :root {
+                --sidebar-width: 250px;
+                --header-height: 60px;
+            }
+            body {
+                margin: 0;
+                display: flex;
+                font-family: sans-serif;
+            }
+            .sidebar {
+                width: var(--sidebar-width);
+                height: 100vh;
+                background: #f8f9fa;
+                border-right: 1px solid #dee2e6;
+                position: fixed;
+                left: 0;
+                top: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .sidebar-header {
+                padding: 20px;
+                font-weight: bold;
+                border-bottom: 1px solid #dee2e6;
+            }
+            .nav-links {
+                padding: 10px;
+                flex: 1;
+            }
+            .nav-item {
+                display: flex;
+                align-items: center;
+                padding: 10px;
+                text-decoration: none;
+                color: #333;
+                gap: 10px;
+            }
+            .nav-item:hover {
+                background: #e9ecef;
+                border-radius: 4px;
+            }
+            .main-container {
+                margin-left: var(--sidebar-width);
+                width: calc(100% - var(--sidebar-width));
+                display: flex;
+                flex-direction: column;
+            }
+            .header {
+                height: var(--header-height);
+                border-bottom: 1px solid #dee2e6;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 20px;
+                position: sticky;
+                top: 0;
+                background: white;
+                z-index: 10;
+            }
+            .content {
+                padding: 20px;
+                min-height: calc(100vh - var(--header-height));
+            }
+            .logout-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                color: #dc3545;
+            }
+        </style>
+    </head>
+    <body class="font-inter bg-slate-50 text-slate-800">
+        <aside class="sidebar">
+            <div class="sidebar-header">Axioma Core</div>
+            <nav class="nav-links">
+                {
+                    visibleNavItems.map((item) => (
+                        <a href={item.href} class="nav-item">
+                            <item.icon size={20} />
+                            <span>{item.label}</span>
+                        </a>
+                    ))
+                }
+            </nav>
+        </aside>
+
+        <div class="main-container">
+            <header class="header">
+                <div>{title}</div>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <span>User: {session.user.userName}</span>
+                    <form
+                        action="/api/auth/logout"
+                        method="POST"
+                        style="margin: 0;"
+                    >
+                        <button type="submit" class="logout-btn">
+                            <LogOut size={18} />
+                            Logout
+                        </button>
+                    </form>
+                </div>
+            </header>
+            <main class="content">
+                <slot />
+            </main>
+        </div>
+    </body>
+</html>

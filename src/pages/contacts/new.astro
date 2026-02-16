@@ -1,0 +1,104 @@
+---
+import AppLayout from "../../layouts/AppLayout.astro";
+import { requireAuth } from "../../lib/requireAuth";
+import { canEntity } from "../../lib/permissions";
+
+const session = await requireAuth(Astro);
+
+if (!canEntity(session, "Contact", "create")) {
+    return new Response(null, { status: 403 });
+}
+---
+
+<AppLayout session={session} title="Nuevo Contacto">
+    <h1>Nuevo Contacto</h1>
+
+    <form
+        id="contactForm"
+        style="max-width: 500px; margin-top: 20px; display: flex; flex-direction: column; gap: 15px;"
+    >
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label for="firstName">Nombre</label>
+            <input
+                type="text"
+                name="firstName"
+                id="firstName"
+                required
+                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+            />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label for="lastName">Apellido</label>
+            <input
+                type="text"
+                name="lastName"
+                id="lastName"
+                required
+                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+            />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label for="emailAddress">Email</label>
+            <input
+                type="email"
+                name="emailAddress"
+                id="emailAddress"
+                required
+                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+            />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label for="phoneNumber">Teléfono</label>
+            <input
+                type="text"
+                name="phoneNumber"
+                id="phoneNumber"
+                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+            />
+        </div>
+
+        <div style="margin-top: 10px; display: flex; gap: 10px;">
+            <button
+                type="submit"
+                style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;"
+            >
+                Guardar
+            </button>
+            <a
+                href="/contacts"
+                style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px;"
+            >
+                Cancelar
+            </a>
+        </div>
+        <p id="error" style="color: red;"></p>
+    </form>
+
+    <script>
+        const form = document.getElementById("contactForm") as HTMLFormElement;
+        const error = document.getElementById("error");
+
+        form?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            error!.textContent = "";
+
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            const res = await fetch("/api/contacts/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+
+            if (res.ok) {
+                const contact = await res.json();
+                window.location.href = `/contacts/${contact.id}`;
+            } else {
+                const err = await res.json();
+                error!.textContent =
+                    err.message || "Error al crear el contacto";
+            }
+        });
+    </script>
+</AppLayout>

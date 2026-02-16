@@ -1,0 +1,71 @@
+---
+import { getSessionCookie } from "../lib/cookies";
+import { getSession } from "../lib/session";
+
+const token = getSessionCookie(Astro.cookies);
+const session = token ? await getSession(token) : null;
+
+if (session) {
+	return Astro.redirect("/dashboard");
+} else {
+	return Astro.redirect("/login");
+}
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Astro</title>
+	</head>
+	<body>
+		<h1>Astro</h1>
+
+		<section>
+			<h2>Dev Login</h2>
+			<form id="loginForm">
+				<input
+					type="email"
+					name="email"
+					placeholder="test@example.com"
+					required
+				/>
+				<button type="submit">Login</button>
+			</form>
+			<p id="message"></p>
+		</section>
+
+		<hr />
+		<a href="/portal">Go to Portal</a>
+
+		<script>
+			const form = document.getElementById(
+				"loginForm",
+			) as HTMLFormElement;
+			const message = document.getElementById("message");
+
+			form?.addEventListener("submit", async (e) => {
+				e.preventDefault();
+				const formData = new FormData(form);
+				const email = formData.get("email");
+
+				const res = await fetch("/api/auth/dev-login", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ email }),
+				});
+
+				if (res.ok) {
+					window.location.href = "/portal";
+				} else {
+					const data = await res.json();
+					if (message)
+						message.textContent = data.error || "Login failed";
+				}
+			});
+		</script>
+	</body>
+</html>

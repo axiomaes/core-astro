@@ -1,0 +1,155 @@
+---
+import AppLayout from "../../layouts/AppLayout.astro";
+import { requireAuth } from "../../lib/requireAuth";
+import { canEntity } from "../../lib/permissions";
+import { espoFetch } from "../../lib/espoFetch";
+
+const session = await requireAuth(Astro);
+
+if (!session) {
+    return Astro.redirect("/login");
+}
+
+const { id } = Astro.params;
+
+if (!canEntity(session, "Contact", "read")) {
+    return new Response(null, { status: 403 });
+}
+
+// Fetch Contact
+const contactRes = await espoFetch(`/api/v1/Contact/${id}`, "GET", session);
+
+let contact: any = null;
+let bookings = [];
+let fetchError: string | null = null;
+
+if (contactRes.status !== 200) {
+    if (contactRes.status === 404) return new Response(null, { status: 404 });
+    if (contactRes.status === 403) return new Response(null, { status: 403 });
+    fetchError = `Failed to fetch contact: ${contactRes.status}`;
+} else {
+    try {
+        const contentType = contactRes.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            contact = await contactRes.json();
+        } else {
+            console.error(
+                "Non-JSON contact response received:",
+                await contactRes.text().then((t) => t.slice(0, 100)),
+            );
+            fetchError = "Received invalid response format from API";
+        }
+    } catch (err) {
+        console.error("Failed to parse contact JSON:", err);
+        fetchError = "Failed to parse API response";
+    }
+}
+
+// Fetch Related Bookings (assuming relation name or link)
+if (contact) {
+    try {
+        const bookingsRes = await espoFetch(
+            `/api/v1/Contact/${id}/bookings`,
+            "GET",
+            session,
+        );
+        if (bookingsRes.status === 200) {
+            const contentType = bookingsRes.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                const bookingsData = await bookingsRes.json();
+                bookings = bookingsData.list || [];
+            }
+        }
+    } catch (e) {
+        console.error("Failed to fetch bookings", e);
+    }
+}
+
+const canEdit = canEntity(session, "Contact", "edit");
+---
+
+<AppLayout
+    session={session}
+    title={contact ? (contact.fullName || `${contact.firstName} ${contact.lastName}`) : "Detalle de Contacto"}
+>
+    <div style="margin-bottom: 20px;">
+        <a href="/contacts" style="color: #666; text-decoration: none;">&larr; Volver a Clientes</a>
+    </div>
+
+    {fetchError && (
+        <div style="background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 12px; border-radius: 4px; margin-bottom: 20px;">
+            <strong>Error:</strong> {fetchError}.
+        </div>
+    )}
+
+    {!contact && !fetchError && (
+        <div style="padding: 20px; text-align: center; color: #666;">
+            Cargando datos...
+        </div>
+    )}
+
+    {contact && (
+        <div
+            style="display: flex; justify-content: space-between; align-items: flex-start;"
+        >
+        <div>
+            <h1>
+                {contact.fullName || `${contact.firstName} ${contact.lastName}`}
+            </h1>
+            <p><strong>Email:</strong> {contact.emailAddress}</p>
+            <p><strong>Teléfono:</strong> {contact.phoneNumber}</p>
+            <p>
+                <strong>Descripción:</strong>
+                {contact.description || "Sin descripción"}
+            </p>
+        </div>
+        <div>
+            {
+                canEdit && (
+                    <button style="padding: 10px 20px; background: #ffc107; color: black; border: none; border-radius: 4px; cursor: pointer;">
+                        Editar
+                    </button>
+                )
+            }
+        </div>
+    </div>
+
+    <hr style="margin: 40px 0; border: 0; border-top: 1px solid #dee2e6;" />
+
+    <section>
+        <h2>Bookings (Reservas)</h2>
+        {
+            bookings.length === 0 ? (
+                <p>No hay reservas para este contacto.</p>
+            ) : (
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr style="text-align: left; border-bottom: 2px solid #dee2e6;">
+                            <th style="padding: 12px;">Nombre</th>
+                            <th style="padding: 12px;">Fecha</th>
+                            <th style="padding: 12px;">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {bookings.map((booking: any) => (
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 12px;">{booking.name}</td>
+                                <td style="padding: 12px;">
+                                    {new Date(
+                                        booking.createdAt,
+                                    ).toLocaleDateString()}
+                                </td>
+                                <td style="padding: 12px;">{booking.status}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )
+        }
+    </section>
+    )}
+
+    <div style="margin-top: 40px;">
+        <a href="/contacts">← Volver a la lista</a>
+    </div>
+</AppLayout>

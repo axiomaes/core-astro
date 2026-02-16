@@ -1,0 +1,97 @@
+---
+import AppLayout from "../../layouts/AppLayout.astro";
+import { requireAuth } from "../../lib/requireAuth";
+import { canEntity } from "../../lib/permissions";
+import { espoFetch } from "../../lib/espoFetch";
+import ContactCreateModal from "../../islands/ContactCreateModal";
+
+const session = await requireAuth(Astro);
+
+if (!session) {
+    return Astro.redirect("/login");
+}
+
+if (!canEntity(session, "Contact", "read")) {
+    return new Response(null, { status: 403 });
+}
+
+const canCreate = canEntity(session, "Contact", "create");
+
+const response = await espoFetch("/api/v1/Contact?maxSize=20", "GET", session);
+
+let contacts = [];
+let fetchError: string | null = null;
+
+if (response.status !== 200) {
+    if (response.status === 403) {
+        return new Response(null, { status: 403 });
+    }
+    fetchError = `API Error: ${response.status}`;
+} else {
+    try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            const data = await response.json();
+            contacts = data.list || [];
+        } else {
+            console.error(
+                "Non-JSON response received:",
+                await response.text().then((t) => t.slice(0, 100)),
+            );
+            fetchError = "Received invalid response format from API";
+        }
+    } catch (err) {
+        console.error("Failed to parse JSON:", err);
+        fetchError = "Failed to parse API response";
+    }
+}
+---
+
+<AppLayout session={session} title="Clientes">
+    <div
+        style="display: flex; justify-content: space-between; align-items: center;"
+    >
+        <h1>Clientes</h1>
+        {canCreate && <ContactCreateModal client:load />}
+    </div>
+
+    {
+        fetchError && (
+            <div style="background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 12px; border-radius: 4px; margin-top: 20px;">
+                <strong>Error:</strong> {fetchError}.
+                <br />
+                <small>Check your .env config and EspoCRM connection.</small>
+            </div>
+        )
+    }
+
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+            <tr style="text-align: left; border-bottom: 2px solid #dee2e6;">
+                <th style="padding: 12px;">Nombre</th>
+                <th style="padding: 12px;">Email</th>
+                <th style="padding: 12px;">Teléfono</th>
+                <th style="padding: 12px;">Creado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {
+                contacts.map((contact: any) => (
+                    <tr style="border-bottom: 1px solid #dee2e6;">
+                        <td style="padding: 12px;">
+                            <a href={`/contacts/${contact.id}`}>
+                                {contact.fullName ||
+                                    `${contact.firstName} ${contact.lastName}`}
+                            </a>
+                        </td>
+                        <td style="padding: 12px;">{contact.emailAddress}</td>
+                        <td style="padding: 12px;">{contact.phoneNumber}</td>
+                        <td style="padding: 12px;">
+                            {new Date(contact.createdAt).toLocaleDateString()}
+                        </td>
+                    </tr>
+                ))
+            }
+        </tbody>
+    </table>
+</AppLayout>
