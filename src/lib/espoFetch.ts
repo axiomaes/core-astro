@@ -22,7 +22,8 @@ export async function espoFetch(
     };
 
     if (session.espoToken) {
-        headers['Authorization'] = `Bearer ${session.espoToken}`;
+        headers['Espo-Authorization'] = `Bearer ${session.espoToken}`;
+        delete headers['Authorization'];
     } else if (session.espoCookie) {
         headers['Cookie'] = session.espoCookie;
     }
