@@ -4,7 +4,7 @@ import { normalizeError } from './errorUtils';
 
 export async function fetchEspoAcl(session: SessionData): Promise<any> {
     const endpoints = [
-        '/api/v1/App/user',
+        '/App/user',
         '/api/v1/User/me',
         `/api/v1/User/${session.user.id}`,
     ];
